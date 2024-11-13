@@ -15,7 +15,8 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// creating a configuration
+// creating a configuration to the builder to include user secrets and environment variables
+// this configuration is nto directly referenced but is used within the builder
 var config = new ConfigurationBuilder()
     .AddUserSecrets<Program>()
     .AddEnvironmentVariables()
@@ -50,12 +51,14 @@ builder.Services.AddSingleton<CosmosClient>((_) =>
          endpoint: builder.Configuration["AzureOpenAI:Endpoint"]!,
          apiKey: builder.Configuration["AzureOpenAI:ApiKey"]!
      );
+     //adding the plugins to the kernel
      kernelBuilder.Plugins.AddFromType<DatabaseService>();
      return kernelBuilder.Build();
  });
 
 
 // Create a single instance of the AzureOpenAIClient to be shared across the application.
+// might not need this singleton anymore since it's added in SemanticKernel
 builder.Services.AddSingleton<AzureOpenAIClient>((_) =>
 {
     var endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
@@ -86,6 +89,7 @@ app.MapGet("/", async () =>
     .WithOpenApi();
 
 // Retrieve the set of hotels from the database.
+// these next 3 endpoints are used outside of the chat discussion using SK that's why we are keeping them in the code
 app.MapGet("/Hotels", async () => 
 {
     var hotels = await app.Services.GetRequiredService<IDatabaseService>().GetHotels();
@@ -112,12 +116,16 @@ app.MapGet("/Hotels/{hotelId}/Bookings/{min_date}", async (int hotelId, DateTime
     .WithName("GetRecentBookingsForHotel")
     .WithOpenApi();
 
-// This endpoint is used to send a message to the Azure OpenAI endpoint.
+// This endpoint is used to send a message to the Azure OpenAI endpoint using the different plugins.
  app.MapPost("/Chat", async Task<string> (HttpRequest request) =>
  {
     var message = await Task.FromResult(request.Form["message"]);
+
+    // add semantic kernel here using the singleton
     var kernel = app.Services.GetRequiredService<Kernel>();
+    // use chat completion service to get the response
     var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+    // adding AOAI settings neededed to the chat completion service
     var executionSettings = new OpenAIPromptExecutionSettings
     {
         ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions
