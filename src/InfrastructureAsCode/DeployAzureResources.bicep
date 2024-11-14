@@ -26,8 +26,8 @@ param restore bool = false
 param apimPublisherEmail string = 'support@contososuites.com'
 
 var apiManagementServiceName = 'apim-${uniqueString(resourceGroup().id)}'
-var apimSku = 'Consumption'
-var apimSkuCount = 0
+var apimSku = 'BasicV2'
+var apimSkuCount = 1
 var apimPublisherName = 'Contoso Suites'
 
 var cosmosDbName = '${uniqueString(resourceGroup().id)}-cosmosdb'
@@ -374,9 +374,9 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource apiManagementService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
+resource apiManagementService 'Microsoft.ApiManagement/service@2024-05-01' = {
   name: apiManagementServiceName
-  location: location
+  location: 'northeurope'
   sku: {
     name: apimSku
     capacity: apimSkuCount
